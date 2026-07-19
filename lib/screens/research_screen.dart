@@ -3,13 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../controllers/app_controller.dart';
+import '../models/research_record.dart';
+import '../repositories/research_repository.dart';
 import '../services/gemini_service.dart';
 
 class ResearchScreen extends StatefulWidget {
-  const ResearchScreen({
-    required this.controller,
-    super.key,
-  });
+  const ResearchScreen({required this.controller, super.key});
 
   final AppController controller;
 
@@ -22,29 +21,12 @@ class _ResearchScreenState extends State<ResearchScreen> {
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
   final _geminiService = GeminiService();
+  final _repository = ResearchRepository.instance;
 
   static const _makes = [
-    'Audi',
-    'BMW',
-    'Citroen',
-    'Dacia',
-    'Fiat',
-    'Ford',
-    'Honda',
-    'Hyundai',
-    'Kia',
-    'Land Rover',
-    'Mercedes-Benz',
-    'MINI',
-    'Nissan',
-    'Peugeot',
-    'Renault',
-    'SEAT',
-    'Skoda',
-    'Toyota',
-    'Vauxhall',
-    'Volkswagen',
-    'Volvo',
+    'Audi', 'BMW', 'Citroen', 'Dacia', 'Fiat', 'Ford', 'Honda', 'Hyundai',
+    'Kia', 'Land Rover', 'Mercedes-Benz', 'MINI', 'Nissan', 'Peugeot',
+    'Renault', 'SEAT', 'Skoda', 'Toyota', 'Vauxhall', 'Volkswagen', 'Volvo',
   ];
 
   static const _jobTypes = [
@@ -70,10 +52,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
 
   Future<void> _researchVehicle() async {
     FocusScope.of(context).unfocus();
-
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     if (!widget.controller.hasGeminiApiKey) {
       setState(() {
@@ -84,7 +63,6 @@ class _ResearchScreenState extends State<ResearchScreen> {
     }
 
     final year = int.parse(_yearController.text.trim());
-
     setState(() {
       _isResearching = true;
       _errorMessage = null;
@@ -101,8 +79,24 @@ class _ResearchScreenState extends State<ResearchScreen> {
         ukOnly: widget.controller.ukOnly,
       );
 
+      final now = DateTime.now();
+      await _repository.save(
+        ResearchRecord(
+          make: _selectedMake!,
+          model: _modelController.text.trim(),
+          year: year,
+          jobType: _jobType,
+          result: result,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
       if (!mounted) return;
       setState(() => _result = result);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Research saved to Saved Data.')),
+      );
     } on GeminiServiceException catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.message);
@@ -110,9 +104,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
       if (!mounted) return;
       setState(() => _errorMessage = 'Unexpected error: $error');
     } finally {
-      if (mounted) {
-        setState(() => _isResearching = false);
-      }
+      if (mounted) setState(() => _isResearching = false);
     }
   }
 
@@ -135,16 +127,9 @@ class _ResearchScreenState extends State<ResearchScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: _makes
-                        .map(
-                          (make) => DropdownMenuItem(
-                            value: make,
-                            child: Text(make),
-                          ),
-                        )
+                        .map((make) => DropdownMenuItem(value: make, child: Text(make)))
                         .toList(),
-                    validator: (value) => value == null
-                        ? 'Select a manufacturer.'
-                        : null,
+                    validator: (value) => value == null ? 'Select a manufacturer.' : null,
                     onChanged: _isResearching
                         ? null
                         : (value) => setState(() => _selectedMake = value),
@@ -191,19 +176,12 @@ class _ResearchScreenState extends State<ResearchScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: _jobTypes
-                        .map(
-                          (job) => DropdownMenuItem(
-                            value: job,
-                            child: Text(job),
-                          ),
-                        )
+                        .map((job) => DropdownMenuItem(value: job, child: Text(job)))
                         .toList(),
                     onChanged: _isResearching
                         ? null
                         : (value) {
-                            if (value != null) {
-                              setState(() => _jobType = value);
-                            }
+                            if (value != null) setState(() => _jobType = value);
                           },
                   ),
                   const SizedBox(height: 20),
@@ -217,9 +195,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.auto_awesome),
-                      label: Text(
-                        _isResearching ? 'Researching…' : 'Research Vehicle',
-                      ),
+                      label: Text(_isResearching ? 'Researching…' : 'Research Vehicle'),
                     ),
                   ),
                   if (!widget.controller.hasGeminiApiKey) ...[
@@ -229,9 +205,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
                         Icon(Icons.warning_amber_rounded, size: 18),
                         SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            'Gemini API key required. Add it on the Settings tab.',
-                          ),
+                          child: Text('Gemini API key required. Add it on the Settings tab.'),
                         ),
                       ],
                     ),
@@ -247,54 +221,30 @@ class _ResearchScreenState extends State<ResearchScreen> {
             color: Theme.of(context).colorScheme.errorContainer,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: Theme.of(context).colorScheme.onErrorContainer,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: Text(_errorMessage!),
             ),
           ),
         ],
         if (_result != null) ...[
           const SizedBox(height: 16),
-          _ResultsCard(result: _result!),
+          ResearchResultsCard(result: _result!),
         ],
       ],
     );
   }
 }
 
-class _ResultsCard extends StatelessWidget {
-  const _ResultsCard({required this.result});
+class ResearchResultsCard extends StatelessWidget {
+  const ResearchResultsCard({required this.result, super.key});
 
   final Map<String, dynamic> result;
 
   @override
   Widget build(BuildContext context) {
     const preferredOrder = [
-      'vehicle',
-      'keys',
-      'immobiliser',
-      'programming',
-      'tools',
-      'confidence',
-      'sources',
-      'more_information',
+      'vehicle', 'keys', 'immobiliser', 'programming', 'tools',
+      'confidence', 'sources', 'more_information',
     ];
-
     final keys = <String>[
       ...preferredOrder.where(result.containsKey),
       ...result.keys.where((key) => !preferredOrder.contains(key)),
@@ -310,10 +260,7 @@ class _ResultsCard extends StatelessWidget {
               children: [
                 const Icon(Icons.fact_check_outlined),
                 const SizedBox(width: 10),
-                Text(
-                  'Research Result',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('Research Result', style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
             const SizedBox(height: 12),
@@ -337,27 +284,19 @@ class _ResultsCard extends StatelessWidget {
     );
   }
 
-  static String _titleFor(String key) {
-    return key
-        .split('_')
-        .map(
-          (word) => word.isEmpty
-              ? word
-              : '${word[0].toUpperCase()}${word.substring(1)}',
-        )
-        .join(' ');
-  }
+  static String _titleFor(String key) => key
+      .split('_')
+      .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
+      .join(' ');
 
   static String _formatValue(Object? value) {
     if (value == null) return 'Research Required';
     if (value is String) return value.isEmpty ? 'Research Required' : value;
     if (value is List && value.isEmpty) return 'Research Required';
     if (value is Map && value.isEmpty) return 'Research Required';
-
     if (value is Map || value is List) {
       return const JsonEncoder.withIndent('  ').convert(value);
     }
-
     return value.toString();
   }
 }
