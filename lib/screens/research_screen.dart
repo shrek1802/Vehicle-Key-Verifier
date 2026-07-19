@@ -50,6 +50,31 @@ class _ResearchScreenState extends State<ResearchScreen> {
     super.dispose();
   }
 
+  int? _normaliseUkYear(String input) {
+    final digits = input.toUpperCase().replaceAll(RegExp(r'[^0-9]'), '');
+    final maximumYear = DateTime.now().year + 1;
+
+    if (digits.length == 4) {
+      final year = int.tryParse(digits);
+      if (year != null && year >= 1980 && year <= maximumYear) return year;
+      return null;
+    }
+
+    if (digits.length != 2) return null;
+    final ageIdentifier = int.tryParse(digits);
+    if (ageIdentifier == null) return null;
+
+    int? year;
+    if (ageIdentifier >= 1 && ageIdentifier <= 49) {
+      year = 2000 + ageIdentifier;
+    } else if (ageIdentifier >= 51 && ageIdentifier <= 99) {
+      year = 2000 + ageIdentifier - 50;
+    }
+
+    if (year == null || year < 1980 || year > maximumYear) return null;
+    return year;
+  }
+
   Future<void> _researchVehicle() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
@@ -62,7 +87,9 @@ class _ResearchScreenState extends State<ResearchScreen> {
       return;
     }
 
-    final year = int.parse(_yearController.text.trim());
+    final year = _normaliseUkYear(_yearController.text.trim())!;
+    _yearController.text = year.toString();
+
     setState(() {
       _isResearching = true;
       _errorMessage = null;
@@ -121,7 +148,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    value: _selectedMake,
+                    initialValue: _selectedMake,
                     decoration: const InputDecoration(
                       labelText: 'Manufacturer',
                       border: OutlineInputBorder(),
@@ -152,25 +179,25 @@ class _ResearchScreenState extends State<ResearchScreen> {
                   TextFormField(
                     controller: _yearController,
                     enabled: !_isResearching,
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.text,
+                    textCapitalization: TextCapitalization.characters,
                     decoration: const InputDecoration(
-                      labelText: 'Year',
-                      hintText: 'For example: 2021',
+                      labelText: 'Year / UK Registration',
+                      hintText: 'For example: 2021, 71 or AB71 CDE',
+                      helperText: 'UK registration ages are converted automatically.',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
-                      final year = int.tryParse(value?.trim() ?? '');
-                      final maximumYear = DateTime.now().year + 1;
-                      if (year == null) return 'Enter a valid year.';
-                      if (year < 1980 || year > maximumYear) {
-                        return 'Enter a year from 1980 to $maximumYear.';
+                      final year = _normaliseUkYear(value?.trim() ?? '');
+                      if (year == null) {
+                        return 'Enter a full year or UK registration age, e.g. 2021 or 71.';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _jobType,
+                    initialValue: _jobType,
                     decoration: const InputDecoration(
                       labelText: 'Job Type',
                       border: OutlineInputBorder(),
