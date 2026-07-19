@@ -1,67 +1,141 @@
 import 'package:flutter/material.dart';
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+import '../controllers/app_controller.dart';
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({
+    required this.controller,
+    super.key,
+  });
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool darkMode = false;
-  bool showOnlyUkVehicles = true;
+  final AppController controller;
+
+  Future<void> _editApiKey(BuildContext context) async {
+    final textController = TextEditingController(
+      text: controller.geminiApiKey,
+    );
+    bool obscureText = true;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Gemini API key'),
+              content: TextField(
+                controller: textController,
+                obscureText: obscureText,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'API key',
+                  hintText: 'Paste your Gemini API key',
+                  suffixIcon: IconButton(
+                    tooltip: obscureText ? 'Show key' : 'Hide key',
+                    onPressed: () {
+                      setDialogState(() => obscureText = !obscureText);
+                    },
+                    icon: Icon(
+                      obscureText ? Icons.visibility : Icons.visibility_off,
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, textController.text);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    textController.dispose();
+
+    if (result == null || !context.mounted) {
+      return;
+    }
+
+    await controller.setGeminiApiKey(result);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          controller.hasGeminiApiKey
+              ? 'Gemini API key saved.'
+              : 'Gemini API key removed.',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text(
-          'Settings',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.key_outlined),
-                title: const Text('Gemini API key'),
-                subtitle: const Text('Not configured'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('API key storage will be added next.')),
-                  );
-                },
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.key_outlined),
+                    title: const Text('Gemini API key'),
+                    subtitle: Text(
+                      controller.hasGeminiApiKey
+                          ? 'Configured on this device'
+                          : 'Not configured',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _editApiKey(context),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.dark_mode_outlined),
+                    title: const Text('Dark mode'),
+                    value: controller.darkMode,
+                    onChanged: controller.setDarkMode,
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.flag_outlined),
+                    title: const Text('UK vehicles only'),
+                    subtitle: const Text(
+                      'Use UK registration years and RHD research defaults.',
+                    ),
+                    value: controller.ukOnly,
+                    onChanged: controller.setUkOnly,
+                  ),
+                ],
               ),
-              const Divider(height: 1),
-              SwitchListTile(
-                secondary: const Icon(Icons.dark_mode_outlined),
-                title: const Text('Dark mode'),
-                value: darkMode,
-                onChanged: (value) => setState(() => darkMode = value),
+            ),
+            const SizedBox(height: 16),
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.info_outline),
+                title: Text('Vehicle Key Verifier'),
+                subtitle: Text('Version 0.1.0'),
               ),
-              const Divider(height: 1),
-              SwitchListTile(
-                secondary: const Icon(Icons.flag_outlined),
-                title: const Text('UK vehicles only'),
-                subtitle: const Text('Use UK registration years and RHD research defaults.'),
-                value: showOnlyUkVehicles,
-                onChanged: (value) => setState(() => showOnlyUkVehicles = value),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Card(
-          child: ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Vehicle Key Verifier'),
-            subtitle: Text('Version 0.1.0'),
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
