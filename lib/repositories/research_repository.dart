@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import '../models/research_record.dart';
@@ -29,9 +30,7 @@ class ResearchRepository {
       where: cleaned.isEmpty
           ? null
           : 'make LIKE ? OR model LIKE ? OR CAST(year AS TEXT) LIKE ? OR job_type LIKE ?',
-      whereArgs: cleaned.isEmpty
-          ? null
-          : List.filled(4, '%$cleaned%'),
+      whereArgs: cleaned.isEmpty ? null : List.filled(4, '%$cleaned%'),
       orderBy: 'is_favourite DESC, updated_at DESC',
     );
     return rows.map(ResearchRecord.fromDatabaseMap).toList();
