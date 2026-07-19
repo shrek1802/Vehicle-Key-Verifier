@@ -38,100 +38,94 @@ jobs:
           grep -n 'android.permission.INTERNET' "$MANIFEST"
 
       - name: Add UK registration year support
-        shell: python
+        shell: bash
         run: |
+          python3 <<'PY'
           from pathlib import Path
 
           path = Path('lib/screens/research_screen.dart')
           text = path.read_text()
 
           old = """  Future<void> _researchVehicle() async {
-"""
+          """
           helper = """  int? _normaliseUkYear(String input) {
-    final digits = input.toUpperCase().replaceAll(RegExp(r'[^0-9]'), '');
-    final maximumYear = DateTime.now().year + 1;
+            final digits = input.toUpperCase().replaceAll(RegExp(r'[^0-9]'), '');
+            final maximumYear = DateTime.now().year + 1;
 
-    if (digits.length == 4) {
-      final year = int.tryParse(digits);
-      if (year != null && year >= 1980 && year <= maximumYear) return year;
-      return null;
-    }
+            if (digits.length == 4) {
+              final year = int.tryParse(digits);
+              if (year != null && year >= 1980 && year <= maximumYear) return year;
+              return null;
+            }
 
-    if (digits.length != 2) return null;
-    final ageIdentifier = int.tryParse(digits);
-    if (ageIdentifier == null) return null;
+            if (digits.length != 2) return null;
+            final ageIdentifier = int.tryParse(digits);
+            if (ageIdentifier == null) return null;
 
-    int? year;
-    if (ageIdentifier >= 1 && ageIdentifier <= 49) {
-      year = 2000 + ageIdentifier;
-    } else if (ageIdentifier >= 51 && ageIdentifier <= 99) {
-      year = 2000 + ageIdentifier - 50;
-    }
+            int? year;
+            if (ageIdentifier >= 1 && ageIdentifier <= 49) {
+              year = 2000 + ageIdentifier;
+            } else if (ageIdentifier >= 51 && ageIdentifier <= 99) {
+              year = 2000 + ageIdentifier - 50;
+            }
 
-    if (year == null || year < 1980 || year > maximumYear) return null;
-    return year;
-  }
+            if (year == null || year < 1980 || year > maximumYear) return null;
+            return year;
+          }
 
-  Future<void> _researchVehicle() async {
-"""
+          Future<void> _researchVehicle() async {
+          """
           if old not in text:
-            raise SystemExit('Could not find research method insertion point')
+              raise SystemExit('Could not find research method insertion point')
           text = text.replace(old, helper, 1)
 
           old = """    final year = int.parse(_yearController.text.trim());
-"""
+          """
           new = """    final year = _normaliseUkYear(_yearController.text.trim())!;
-    _yearController.text = year.toString();
-"""
+            _yearController.text = year.toString();
+          """
           if old not in text:
-            raise SystemExit('Could not find year parsing code')
+              raise SystemExit('Could not find year parsing code')
           text = text.replace(old, new, 1)
 
-          text = text.replace(
-              "value: _selectedMake,",
-              "initialValue: _selectedMake,",
-              1,
-          )
-          text = text.replace(
-              "value: _jobType,",
-              "initialValue: _jobType,",
-              1,
-          )
+          text = text.replace('value: _selectedMake,', 'initialValue: _selectedMake,', 1)
+          text = text.replace('value: _jobType,', 'initialValue: _jobType,', 1)
 
           old = """                    decoration: const InputDecoration(
-                      labelText: 'Year',
-                      hintText: 'For example: 2021',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      final year = int.tryParse(value?.trim() ?? '');
-                      final maximumYear = DateTime.now().year + 1;
-                      if (year == null) return 'Enter a valid year.';
-                      if (year < 1980 || year > maximumYear) {
-                        return 'Enter a year from 1980 to $maximumYear.';
-                      }
-                      return null;
-                    },
-"""
+                              labelText: 'Year',
+                              hintText: 'For example: 2021',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              final year = int.tryParse(value?.trim() ?? '');
+                              final maximumYear = DateTime.now().year + 1;
+                              if (year == null) return 'Enter a valid year.';
+                              if (year < 1980 || year > maximumYear) {
+                                return 'Enter a year from 1980 to $maximumYear.';
+                              }
+                              return null;
+                            },
+          """
           new = """                    decoration: const InputDecoration(
-                      labelText: 'Year / UK Registration',
-                      hintText: 'For example: 2021, 71 or AB71 CDE',
-                      helperText: 'UK age identifiers are converted automatically.',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      final year = _normaliseUkYear(value?.trim() ?? '');
-                      if (year == null) {
-                        return 'Enter a full year or UK registration age, e.g. 2021 or 71.';
-                      }
-                      return null;
-                    },
-"""
+                              labelText: 'Year / UK Registration',
+                              hintText: 'For example: 2021, 71 or AB71 CDE',
+                              helperText: 'UK age identifiers are converted automatically.',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              final year = _normaliseUkYear(value?.trim() ?? '');
+                              if (year == null) {
+                                return 'Enter a full year or UK registration age, e.g. 2021 or 71.';
+                              }
+                              return null;
+                            },
+          """
           if old not in text:
-            raise SystemExit('Could not find year field')
+              raise SystemExit('Could not find year field')
           text = text.replace(old, new, 1)
 
           path.write_text(text)
+          PY
 
       - name: Clean generated template files
         run: |
