@@ -241,12 +241,12 @@ class ResearchResultsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tools = _asMapList(result['tool_compatibility']);
     const preferredOrder = [
       'vehicle',
       'keys',
       'immobiliser',
       'programming',
-      'tool_compatibility',
       'job_requirements',
       'recommended_methods',
       'confidence',
@@ -255,50 +255,59 @@ class ResearchResultsCard extends StatelessWidget {
     ];
     final keys = <String>[
       ...preferredOrder.where(result.containsKey),
-      ...result.keys.where((key) => !preferredOrder.contains(key)),
+      ...result.keys.where(
+        (key) => !preferredOrder.contains(key) && key != 'tool_compatibility',
+      ),
     ];
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Column(
+      children: [
+        if (tools.isNotEmpty) ...[
+          ToolCompatibilitySection(tools: tools),
+          const SizedBox(height: 16),
+        ],
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.fact_check_outlined),
-                const SizedBox(width: 10),
-                Text('Research Result', style: Theme.of(context).textTheme.titleLarge),
+                Row(
+                  children: [
+                    const Icon(Icons.fact_check_outlined),
+                    const SizedBox(width: 10),
+                    Text('Research Result', style: Theme.of(context).textTheme.titleLarge),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...keys.map(
+                  (key) => ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 16),
+                    initiallyExpanded: key == 'vehicle' || key == 'keys',
+                    title: Text(_titleFor(key)),
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SelectableText(_formatValue(result[key])),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
-            ...keys.map(
-              (key) => ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(bottom: 16),
-                initiallyExpanded: key == 'vehicle' ||
-                    key == 'keys' ||
-                    key == 'tool_compatibility',
-                leading: key == 'tool_compatibility'
-                    ? const Icon(Icons.build_circle_outlined)
-                    : key == 'job_requirements'
-                        ? const Icon(Icons.checklist_outlined)
-                        : key == 'recommended_methods'
-                            ? const Icon(Icons.route_outlined)
-                            : null,
-                title: Text(_titleFor(key)),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: SelectableText(_formatValue(result[key])),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
+  }
+
+  static List<Map<String, dynamic>> _asMapList(Object? value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((item) => item.map((key, value) => MapEntry(key.toString(), value)))
+        .toList();
   }
 
   static String _titleFor(String key) => key
@@ -315,5 +324,173 @@ class ResearchResultsCard extends StatelessWidget {
       return const JsonEncoder.withIndent('  ').convert(value);
     }
     return value.toString();
+  }
+}
+
+class ToolCompatibilitySection extends StatelessWidget {
+  const ToolCompatibilitySection({required this.tools, super.key});
+
+  final List<Map<String, dynamic>> tools;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.build_circle_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Tool Compatibility',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Compatible programmers, required attachments, cables and limitations.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            ...tools.map((tool) => _ToolCard(tool: tool)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolCard extends StatelessWidget {
+  const _ToolCard({required this.tool});
+
+  final Map<String, dynamic> tool;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _text('support_status');
+    final manufacturer = _text('manufacturer');
+    final model = _text('tool_model');
+    final supported = _strings('supported_functions');
+    final unsupported = _strings('unsupported_functions');
+    final connections = _strings('connection_methods');
+    final attachments = _strings('required_attachments');
+    final cables = _strings('required_cables');
+    final optional = _strings('optional_accessories');
+    final security = _strings('security_data_requirements');
+    final gateway = _strings('gateway_requirements');
+    final limitations = _strings('limitations');
+
+    return Card.outlined(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        leading: Icon(_statusIcon(status)),
+        title: Text(
+          [manufacturer, model].where((value) => value.isNotEmpty).join(' '),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(status.isEmpty ? 'Research Required' : status),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          if (supported.isNotEmpty) _DetailGroup(title: 'Supported functions', values: supported),
+          if (unsupported.isNotEmpty) _DetailGroup(title: 'Unsupported functions', values: unsupported),
+          if (connections.isNotEmpty) _DetailGroup(title: 'Connection methods', values: connections),
+          if (attachments.isNotEmpty) _DetailGroup(title: 'Required attachments', values: attachments),
+          if (cables.isNotEmpty) _DetailGroup(title: 'Required cables', values: cables),
+          if (optional.isNotEmpty) _DetailGroup(title: 'Optional accessories', values: optional),
+          _SingleDetail(title: 'Licence or subscription', value: _text('licence_or_subscription')),
+          _SingleDetail(title: 'Minimum software version', value: _text('minimum_software_version')),
+          _SingleDetail(title: 'Online required', value: _text('online_required')),
+          _SingleDetail(title: 'Dealer key requirement', value: _text('dealer_key_requirement')),
+          if (security.isNotEmpty) _DetailGroup(title: 'Security data', values: security),
+          if (gateway.isNotEmpty) _DetailGroup(title: 'Gateway requirements', values: gateway),
+          if (limitations.isNotEmpty) _DetailGroup(title: 'Limitations and cautions', values: limitations),
+          _SingleDetail(title: 'Notes', value: _text('notes')),
+        ],
+      ),
+    );
+  }
+
+  String _text(String key) {
+    final value = tool[key];
+    return value == null ? '' : value.toString().trim();
+  }
+
+  List<String> _strings(String key) {
+    final value = tool[key];
+    if (value is! List) return const [];
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty && item != 'Research Required')
+        .toList();
+  }
+
+  IconData _statusIcon(String status) {
+    final value = status.toLowerCase();
+    if (value.contains('confirmed')) return Icons.check_circle_outline;
+    if (value.contains('unsupported')) return Icons.cancel_outlined;
+    if (value.contains('dependent')) return Icons.warning_amber_rounded;
+    return Icons.help_outline;
+  }
+}
+
+class _DetailGroup extends StatelessWidget {
+  const _DetailGroup({required this.title, required this.values});
+
+  final String title;
+  final List<String> values;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            ...values.map(
+              (value) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text('• $value'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SingleDetail extends StatelessWidget {
+  const _SingleDetail({required this.title, required this.value});
+
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value.isEmpty || value == 'Research Required') return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: '$title: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+              TextSpan(text: value),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
