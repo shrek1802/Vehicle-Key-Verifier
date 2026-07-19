@@ -242,8 +242,16 @@ class ResearchResultsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const preferredOrder = [
-      'vehicle', 'keys', 'immobiliser', 'programming', 'tools',
-      'confidence', 'sources', 'more_information',
+      'vehicle',
+      'keys',
+      'immobiliser',
+      'programming',
+      'tool_compatibility',
+      'job_requirements',
+      'recommended_methods',
+      'confidence',
+      'sources',
+      'more_information',
     ];
     final keys = <String>[
       ...preferredOrder.where(result.containsKey),
@@ -268,7 +276,16 @@ class ResearchResultsCard extends StatelessWidget {
               (key) => ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: const EdgeInsets.only(bottom: 16),
-                initiallyExpanded: key == 'vehicle' || key == 'keys',
+                initiallyExpanded: key == 'vehicle' ||
+                    key == 'keys' ||
+                    key == 'tool_compatibility',
+                leading: key == 'tool_compatibility'
+                    ? const Icon(Icons.build_circle_outlined)
+                    : key == 'job_requirements'
+                        ? const Icon(Icons.checklist_outlined)
+                        : key == 'recommended_methods'
+                            ? const Icon(Icons.route_outlined)
+                            : null,
                 title: Text(_titleFor(key)),
                 children: [
                   Align(
