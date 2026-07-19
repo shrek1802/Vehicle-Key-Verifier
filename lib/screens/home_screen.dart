@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/app_controller.dart';
 import 'export_screen.dart';
 import 'research_screen.dart';
 import 'saved_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    required this.controller,
+    super.key,
+  });
+
+  final AppController controller;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,11 +21,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
-  final List<Widget> pages = const [
-    ResearchScreen(),
-    SavedScreen(),
-    ExportScreen(),
-    SettingsScreen(),
+  late final List<Widget> pages = [
+    const ResearchScreen(),
+    const SavedScreen(),
+    const ExportScreen(),
+    SettingsScreen(controller: widget.controller),
   ];
 
   static const titles = [
@@ -36,9 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(titles[currentIndex]),
         centerTitle: true,
       ),
-      body: IndexedStack(
-        index: currentIndex,
-        children: pages,
+      body: SafeArea(
+        child: IndexedStack(
+          index: currentIndex,
+          children: pages,
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
