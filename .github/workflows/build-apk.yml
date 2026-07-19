@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Version name (example 0.1.0)
+        required: true
+        default: 0.1.0
+      version_code:
+        description: Android version code
+        required: true
+        default: '1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project files
+        run: flutter create --platforms=android --project-name vehicle_key_verifier .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyse source
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build release APK
+        run: >-
+          flutter build apk --release
+          --build-name=${{ inputs.version_name }}
+          --build-number=${{ inputs.version_code }}
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk Vehicle-Key-Verifier-${{ inputs.version_name }}.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vehicle-Key-Verifier-${{ inputs.version_name }}
+          path: Vehicle-Key-Verifier-${{ inputs.version_name }}.apk
+          retention-days: 30
