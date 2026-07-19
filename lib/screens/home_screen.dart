@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
   late final List<Widget> pages = [
-    const ResearchScreen(),
+    ResearchScreen(controller: widget.controller),
     const SavedScreen(),
     const ExportScreen(),
     SettingsScreen(controller: widget.controller),
