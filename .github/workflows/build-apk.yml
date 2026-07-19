@@ -46,9 +46,9 @@ jobs:
           path = Path('lib/screens/research_screen.dart')
           text = path.read_text()
 
-          old = """  Future<void> _researchVehicle() async {
-          """
-          helper = """  int? _normaliseUkYear(String input) {
+          if '_normaliseUkYear' not in text:
+              marker = '  Future<void> _researchVehicle() async {'
+              helper = '''  int? _normaliseUkYear(String input) {
             final digits = input.toUpperCase().replaceAll(RegExp(r'[^0-9]'), '');
             final maximumYear = DateTime.now().year + 1;
 
@@ -73,56 +73,30 @@ jobs:
             return year;
           }
 
-          Future<void> _researchVehicle() async {
-          """
-          if old not in text:
-              raise SystemExit('Could not find research method insertion point')
-          text = text.replace(old, helper, 1)
+'''
+              if marker not in text:
+                  raise SystemExit('Could not find research method insertion point')
+              text = text.replace(marker, helper + marker, 1)
 
-          old = """    final year = int.parse(_yearController.text.trim());
-          """
-          new = """    final year = _normaliseUkYear(_yearController.text.trim())!;
-            _yearController.text = year.toString();
-          """
-          if old not in text:
-              raise SystemExit('Could not find year parsing code')
-          text = text.replace(old, new, 1)
-
+          text = text.replace(
+              'final year = int.parse(_yearController.text.trim());',
+              'final year = _normaliseUkYear(_yearController.text.trim())!;\n    _yearController.text = year.toString();',
+              1,
+          )
+          text = text.replace(
+              "final year = int.tryParse(value?.trim() ?? '');",
+              "final year = _normaliseUkYear(value?.trim() ?? '');",
+              1,
+          )
+          text = text.replace(
+              "if (year == null) return 'Enter a valid year.';",
+              "if (year == null) return 'Enter a full year or UK registration age, e.g. 2021 or 71.';",
+              1,
+          )
+          text = text.replace("labelText: 'Year',", "labelText: 'Year / UK Registration',", 1)
+          text = text.replace("hintText: 'For example: 2021',", "hintText: 'For example: 2021, 71 or AB71 CDE',", 1)
           text = text.replace('value: _selectedMake,', 'initialValue: _selectedMake,', 1)
           text = text.replace('value: _jobType,', 'initialValue: _jobType,', 1)
-
-          old = """                    decoration: const InputDecoration(
-                              labelText: 'Year',
-                              hintText: 'For example: 2021',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              final year = int.tryParse(value?.trim() ?? '');
-                              final maximumYear = DateTime.now().year + 1;
-                              if (year == null) return 'Enter a valid year.';
-                              if (year < 1980 || year > maximumYear) {
-                                return 'Enter a year from 1980 to $maximumYear.';
-                              }
-                              return null;
-                            },
-          """
-          new = """                    decoration: const InputDecoration(
-                              labelText: 'Year / UK Registration',
-                              hintText: 'For example: 2021, 71 or AB71 CDE',
-                              helperText: 'UK age identifiers are converted automatically.',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              final year = _normaliseUkYear(value?.trim() ?? '');
-                              if (year == null) {
-                                return 'Enter a full year or UK registration age, e.g. 2021 or 71.';
-                              }
-                              return null;
-                            },
-          """
-          if old not in text:
-              raise SystemExit('Could not find year field')
-          text = text.replace(old, new, 1)
 
           path.write_text(text)
           PY
