@@ -198,8 +198,28 @@ Vehicle request:
 
 Return one JSON object only. Do not use Markdown and do not add text outside the JSON.
 Never guess. When reliable information is unavailable, write "Research Required".
-Do not claim that a tool or procedure is supported unless you are reasonably confident.
+Do not claim that a tool, attachment, cable, licence or procedure is supported unless you are reasonably confident.
+Clearly distinguish confirmed support, model-dependent support, unsupported functions and information that requires verification.
+Research multiple professional locksmith tool brands, not only Autel or the user's own tools.
 Keep safety and legality in mind and provide professional locksmith reference information only.
+
+For tool compatibility, consider relevant current and legacy tools from manufacturers including:
+Autel, Xhorse, OBDSTAR, Advanced Diagnostics/Smart Pro, Lonsdor, Abrites, KEYDIY, Auro/Otofix, TDB, Zed-Full, Tango, Orange5, VVDI, CGDI, Yanhua and other credible professional systems where applicable.
+Do not include a tool merely because the brand generally covers the manufacturer.
+
+For every compatible tool entry include:
+- exact tool model
+- support status: Confirmed, Model Dependent, Unsupported, or Research Required
+- supported job functions
+- programming path: OBD, Bench, EEPROM, MCU, BDM, Boot, or mixed
+- every required attachment, programmer, adapter, cable, bypass lead or interface
+- optional accessories
+- online account, token, licence or subscription requirements
+- minimum software version when reliably known
+- whether a dealer key is required or can be generated
+- PIN, CS, ISN, password or security data requirements
+- SGW, SFD, CAN-FD or gateway requirements
+- important limitations and cautions
 
 Use exactly these top-level fields:
 {
@@ -215,11 +235,15 @@ Use exactly these top-level fields:
     "blade_profile": "",
     "transponder": "",
     "frequency": "",
+    "oem_part_numbers": [],
+    "aftermarket_options": [],
     "notes": ""
   },
   "immobiliser": {
     "system": "",
     "module": "",
+    "module_location_rhd": "",
+    "security_data_required": [],
     "notes": ""
   },
   "programming": {
@@ -227,13 +251,59 @@ Use exactly these top-level fields:
     "all_keys_lost": "",
     "spare_key": "",
     "online_required": "",
+    "dealer_key_required": "",
+    "battery_support": "",
+    "estimated_time": "",
+    "difficulty": "",
+    "backup_requirements": [],
     "notes": ""
   },
-  "tools": [],
+  "tool_compatibility": [
+    {
+      "manufacturer": "",
+      "tool_model": "",
+      "support_status": "Confirmed, Model Dependent, Unsupported, or Research Required",
+      "supported_functions": [],
+      "unsupported_functions": [],
+      "connection_methods": [],
+      "required_attachments": [],
+      "required_cables": [],
+      "optional_accessories": [],
+      "licence_or_subscription": "",
+      "minimum_software_version": "",
+      "online_required": "",
+      "dealer_key_requirement": "",
+      "security_data_requirements": [],
+      "gateway_requirements": [],
+      "limitations": [],
+      "notes": ""
+    }
+  ],
+  "job_requirements": {
+    "required_equipment": [],
+    "required_cables_and_adapters": [],
+    "internet_or_account": [],
+    "security_data": [],
+    "module_removal": [],
+    "gateway_or_bypass": [],
+    "power_supply": "",
+    "warnings": []
+  },
+  "recommended_methods": [
+    {
+      "priority": 1,
+      "tool_and_method": "",
+      "reason": "",
+      "requirements": [],
+      "limitations": []
+    }
+  ],
   "sources": [],
   "more_information": "",
   "confidence": "Low, Medium, or High"
 }
+
+Return several tool entries when credible alternatives exist. If support cannot be verified, use Research Required instead of inventing compatibility.
 ''';
   }
 
