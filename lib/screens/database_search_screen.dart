@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/app_controller.dart';
+import '../models/vehicle_record.dart';
 import '../services/local_vehicle_database.dart';
 import 'research_screen.dart';
 import 'vehicle_screen.dart';
@@ -24,7 +25,7 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
   String? _error;
   List<String> _makes = const [];
   List<String> _models = const [];
-  List<Map<String, dynamic>> _results = const [];
+  List<VehicleRecord> _results = const [];
   bool _searched = false;
 
   @override
@@ -247,18 +248,17 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
 class _VehicleCard extends StatelessWidget {
   const _VehicleCard({required this.record});
 
-  final Map<String, dynamic> record;
+  final VehicleRecord record;
 
   @override
   Widget build(BuildContext context) {
-    final title =
-        '${record['Manufacturer'] ?? ''} ${record['Model'] ?? ''}'.trim();
-    final generation = record['Generation']?.toString().trim() ?? '';
-    final start = record['Start Year']?.toString().trim() ?? '';
-    final end = record['End Year']?.toString().trim() ?? '';
+    final title = '${record.manufacturer} ${record.model}'.trim();
+    final start = record.startYear?.toString() ?? '';
+    final end = record.endYear?.toString() ?? '';
     final subtitle = [
-      if (generation.isNotEmpty) generation,
-      if (start.isNotEmpty || end.isNotEmpty) '$start–$end',
+      if (record.generation.isNotEmpty) record.generation,
+      if (start.isNotEmpty || end.isNotEmpty)
+        '${start.isEmpty ? '?' : start}–${end.isEmpty ? 'Present' : end}',
     ].join(' • ');
 
     return Card(
@@ -278,7 +278,8 @@ class _VehicleCard extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => VehicleScreen(record: record),
+              builder: (_) =>
+                  VehicleScreen(record: record.toCanonicalMap()),
             ),
           );
         },
