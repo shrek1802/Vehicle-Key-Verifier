@@ -27,34 +27,34 @@ class _VehicleScreenState extends State<VehicleScreen>
     super.dispose();
   }
 
-  @override
+@override
 Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
-      title: const Text('Vehicle Information'),
+      title: const Text("Vehicle Information"),
       bottom: TabBar(
         controller: _tabController,
         isScrollable: true,
         tabs: const [
           Tab(
             icon: Icon(Icons.info_outline),
-            text: 'Overview',
+            text: "Overview",
           ),
           Tab(
             icon: Icon(Icons.key),
-            text: 'Keys',
+            text: "Programming",
           ),
           Tab(
-            icon: Icon(Icons.memory),
-            text: 'Programming',
+            icon: Icon(Icons.place),
+            text: "Locations",
           ),
           Tab(
-            icon: Icon(Icons.location_on_outlined),
-            text: 'Locations',
+            icon: Icon(Icons.build),
+            text: "Tools",
           ),
           Tab(
-            icon: Icon(Icons.build_circle_outlined),
-            text: 'Tools',
+            icon: Icon(Icons.notes),
+            text: "Notes",
           ),
         ],
       ),
@@ -63,34 +63,19 @@ Widget build(BuildContext context) {
       controller: _tabController,
       children: const [
         Center(
-          child: Text(
-            'Overview Tab',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: Text("Overview"),
         ),
         Center(
-          child: Text(
-            'Keys Tab',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: Text("Programming"),
         ),
         Center(
-          child: Text(
-            'Programming Tab',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: Text("Locations"),
         ),
         Center(
-          child: Text(
-            'Locations Tab',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: Text("Tools"),
         ),
         Center(
-          child: Text(
-            'Tools Tab',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: Text("Notes"),
         ),
       ],
     ),
