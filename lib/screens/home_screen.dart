@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/app_controller.dart';
+import 'database_search_screen.dart';
 import 'export_screen.dart';
-import 'research_screen.dart';
 import 'saved_screen.dart';
 import 'settings_screen.dart';
 
@@ -22,14 +22,14 @@ class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
   late final List<Widget> pages = [
-    ResearchScreen(controller: widget.controller),
+    DatabaseSearchScreen(controller: widget.controller),
     const SavedScreen(),
     const ExportScreen(),
     SettingsScreen(controller: widget.controller),
   ];
 
   static const titles = [
-    'Research',
+    'Vehicle Search',
     'Saved Data',
     'Export',
     'Settings',
@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(
             icon: Icon(Icons.search_outlined),
             selectedIcon: Icon(Icons.search),
-            label: 'Research',
+            label: 'Search',
           ),
           NavigationDestination(
             icon: Icon(Icons.bookmark_border),
