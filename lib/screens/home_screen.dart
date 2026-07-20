@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../widgets/app_header.dart';
-import '../widgets/app_card.dart';
+
 import '../controllers/app_controller.dart';
-import 'database_search_screen.dart';
-import 'export_screen.dart';
-import 'saved_screen.dart';
-import 'settings_screen.dart';
+import '../widgets/app_header.dart';
+import '../screens/database_search_screen.dart';
+import '../screens/research_screen.dart';
+import '../screens/saved_screen.dart';
+import '../screens/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -25,54 +25,40 @@ class _HomeScreenState extends State<HomeScreen> {
   late final List<Widget> pages = [
     DatabaseSearchScreen(controller: widget.controller),
     const SavedScreen(),
-    const ExportScreen(),
+    const ResearchScreen(),
     SettingsScreen(controller: widget.controller),
   ];
 
   static const titles = [
     'Vehicle Search',
-    'Saved Data',
-    'Export',
+    'Saved Vehicles',
+    'AI Research',
     'Settings',
   ];
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: SafeArea(
-      child: Column(
-        children: [
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: AppHeader(
+                title: 'Vehicle Key Verifier',
+                subtitle: 'Professional UK Edition',
+              ),
+            ),
 
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: AppHeader(
-          title: titles[currentIndex],
-          subtitle: 'Vehicle Key Verifier',
-          trailing: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: IndexedStack(
+                index: currentIndex,
+                children: pages,
+              ),
             ),
-            child: const Padding(
-              padding: EdgeInsets.all(10),
-              child: Icon(Icons.lock_outline),
-            ),
-          ),
+          ],
         ),
       ),
-
-      Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: IndexedStack(
-            index: currentIndex,
-            children: pages,
-          ),
-        ),
-      ),
-    ],
-  ),
-),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
@@ -90,9 +76,9 @@ Widget build(BuildContext context) {
             label: 'Saved',
           ),
           NavigationDestination(
-            icon: Icon(Icons.archive_outlined),
-            selectedIcon: Icon(Icons.archive),
-            label: 'Export',
+            icon: Icon(Icons.auto_awesome_outlined),
+            selectedIcon: Icon(Icons.auto_awesome),
+            label: 'Research',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
