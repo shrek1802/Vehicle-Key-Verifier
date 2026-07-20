@@ -2,28 +2,39 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../models/vehicle_record.dart';
+
 class LocalVehicleDatabase {
   LocalVehicleDatabase._();
 
   static final LocalVehicleDatabase instance = LocalVehicleDatabase._();
 
-  List<Map<String, dynamic>> _records = const [];
+  List<VehicleRecord> _records = const [];
   bool _loaded = false;
 
   Future<void> load() async {
     if (_loaded) return;
+
     final raw = await rootBundle.loadString('assets/data/vag_uk_verified.json');
-    final decoded = jsonDecode(raw) as List<dynamic>;
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      throw const FormatException('Vehicle database root must be a JSON list.');
+    }
+
     _records = decoded
         .whereType<Map>()
         .map((item) => item.map((key, value) => MapEntry(key.toString(), value)))
+        .map(VehicleRecord.fromJson)
+        .where((record) =>
+            record.manufacturer.isNotEmpty && record.model.isNotEmpty)
         .toList(growable: false);
+
     _loaded = true;
   }
 
   List<String> get manufacturers {
     final values = _records
-        .map((record) => record['Manufacturer']?.toString().trim() ?? '')
+        .map((record) => record.manufacturer)
         .where((value) => value.isNotEmpty)
         .toSet()
         .toList()
@@ -33,8 +44,8 @@ class LocalVehicleDatabase {
 
   List<String> modelsFor(String manufacturer) {
     final values = _records
-        .where((record) => record['Manufacturer']?.toString() == manufacturer)
-        .map((record) => record['Model']?.toString().trim() ?? '')
+        .where((record) => record.manufacturer == manufacturer)
+        .map((record) => record.model)
         .where((value) => value.isNotEmpty)
         .toSet()
         .toList()
@@ -42,34 +53,24 @@ class LocalVehicleDatabase {
     return values;
   }
 
-  List<Map<String, dynamic>> find({
+  List<VehicleRecord> find({
     required String manufacturer,
     required String model,
     int? year,
   }) {
     final matches = _records.where((record) {
-      if (record['Manufacturer']?.toString() != manufacturer) return false;
-      if (record['Model']?.toString() != model) return false;
+      if (record.manufacturer != manufacturer) return false;
+      if (record.model != model) return false;
       if (year == null) return true;
 
-      final start = _asInt(record['Start Year']);
-      final end = _asInt(record['End Year']);
+      final start = record.startYear;
+      final end = record.endYear;
       if (start != null && year < start) return false;
       if (end != null && year > end) return false;
       return true;
-    }).map(Map<String, dynamic>.from).toList();
+    }).toList();
 
-    matches.sort((a, b) {
-      final aStart = _asInt(a['Start Year']) ?? 0;
-      final bStart = _asInt(b['Start Year']) ?? 0;
-      return bStart.compareTo(aStart);
-    });
+    matches.sort((a, b) => (b.startYear ?? 0).compareTo(a.startYear ?? 0));
     return matches;
-  }
-
-  int? _asInt(Object? value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '');
   }
 }
