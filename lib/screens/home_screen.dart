@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import '../widgets/app_header.dart';
+import '../widgets/app_card.dart';
 import '../controllers/app_controller.dart';
 import 'database_search_screen.dart';
 import 'export_screen.dart';
@@ -35,19 +36,43 @@ class _HomeScreenState extends State<HomeScreen> {
     'Settings',
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(titles[currentIndex]),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: IndexedStack(
-          index: currentIndex,
-          children: pages,
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: SafeArea(
+      child: Column(
+        children: [
+
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: AppHeader(
+          title: titles[currentIndex],
+          subtitle: 'Vehicle Key Verifier',
+          trailing: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(10),
+              child: Icon(Icons.lock_outline),
+            ),
+          ),
         ),
       ),
+
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: IndexedStack(
+            index: currentIndex,
+            children: pages,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
