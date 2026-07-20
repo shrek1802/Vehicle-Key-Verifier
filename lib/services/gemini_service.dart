@@ -18,7 +18,7 @@ class GeminiService {
   final http.Client _client;
 
   static const String _model = 'gemini-3.5-flash';
-  static const Duration _timeout = Duration(seconds: 60);
+  static const Duration _timeout = Duration(seconds: 90);
 
   Future<Map<String, dynamic>> researchVehicle({
     required String apiKey,
@@ -35,17 +35,67 @@ class GeminiService {
       );
     }
 
-    final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/'
-      '$_model:generateContent',
-    );
-
-    final prompt = _buildPrompt(
+    final researchPrompt = _buildResearchPrompt(
       make: make,
       model: model,
       year: year,
       jobType: jobType,
       ukOnly: ukOnly,
+    );
+
+    // Pass 1: grounded research using Google Search.
+    final draft = await _generateJson(
+      apiKey: cleanedApiKey,
+      prompt: researchPrompt,
+      useGoogleSearch: true,
+    );
+
+    // Pass 2: independently verify the first answer and replace errors.
+    final verificationPrompt = _buildVerificationPrompt(
+      make: make,
+      model: model,
+      year: year,
+      jobType: jobType,
+      ukOnly: ukOnly,
+      draft: draft,
+    );
+
+    Map<String, dynamic> verified;
+    try {
+      verified = await _generateJson(
+        apiKey: cleanedApiKey,
+        prompt: verificationPrompt,
+        useGoogleSearch: true,
+      );
+    } on GeminiServiceException {
+      // A useful grounded first-pass result is better than losing the whole search
+      // if the verification pass temporarily fails.
+      verified = Map<String, dynamic>.from(draft);
+      verified['verification'] = {
+        'status': 'First pass only',
+        'method': 'Google Search grounded research',
+        'notes': 'The independent verification pass could not be completed. Re-run the research before relying on uncertain fields.',
+      };
+    }
+
+    _applyOwnerVerifiedCorrections(
+      verified,
+      make: make,
+      model: model,
+      year: year,
+    );
+
+    return _formatForDisplay(verified);
+  }
+
+  Future<Map<String, dynamic>> _generateJson({
+    required String apiKey,
+    required String prompt,
+    required bool useGoogleSearch,
+  }) async {
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/'
+      '$_model:generateContent',
     );
 
     final requestBody = <String, dynamic>{
@@ -57,8 +107,12 @@ class GeminiService {
           ],
         },
       ],
+      if (useGoogleSearch)
+        'tools': [
+          {'google_search': <String, dynamic>{}},
+        ],
       'generationConfig': {
-        'temperature': 0.1,
+        'temperature': 0.05,
         'responseMimeType': 'application/json',
       },
     };
@@ -70,14 +124,14 @@ class GeminiService {
             uri,
             headers: {
               'Content-Type': 'application/json',
-              'x-goog-api-key': cleanedApiKey,
+              'x-goog-api-key': apiKey,
             },
             body: jsonEncode(requestBody),
           )
           .timeout(_timeout);
     } on TimeoutException {
       throw const GeminiServiceException(
-        'Gemini took too long to respond. Check the internet connection and try again.',
+        'Research took too long. Check the internet connection and try again.',
       );
     } on http.ClientException catch (error) {
       throw GeminiServiceException('Network error: ${error.message}');
@@ -87,13 +141,12 @@ class GeminiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final error = decodedBody['error'];
-      if (error is Map<String, dynamic>) {
+      if (error is Map) {
         final message = error['message']?.toString();
         if (message != null && message.isNotEmpty) {
           throw GeminiServiceException(message);
         }
       }
-
       throw GeminiServiceException(
         'Gemini request failed with status ${response.statusCode}.',
       );
@@ -101,25 +154,16 @@ class GeminiService {
 
     final candidates = decodedBody['candidates'];
     if (candidates is! List || candidates.isEmpty) {
-      final feedback = decodedBody['promptFeedback'];
-      throw GeminiServiceException(
-        feedback is Map<String, dynamic> && feedback['blockReason'] != null
-            ? 'Gemini blocked the request: ${feedback['blockReason']}'
-            : 'Gemini returned no research result.',
-      );
+      throw const GeminiServiceException('Gemini returned no research result.');
     }
 
-    final firstCandidate = candidates.first;
-    if (firstCandidate is! Map<String, dynamic>) {
+    final candidate = candidates.first;
+    if (candidate is! Map) {
       throw const GeminiServiceException('Gemini returned an invalid response.');
     }
 
-    final content = firstCandidate['content'];
-    if (content is! Map<String, dynamic>) {
-      throw const GeminiServiceException('Gemini returned no readable content.');
-    }
-
-    final parts = content['parts'];
+    final content = candidate['content'];
+    final parts = content is Map ? content['parts'] : null;
     if (parts is! List || parts.isEmpty) {
       throw const GeminiServiceException('Gemini returned an empty result.');
     }
@@ -135,15 +179,16 @@ class GeminiService {
       throw const GeminiServiceException('Gemini returned an empty result.');
     }
 
-    final result = _decodeResearchJson(text);
-    _applyVerifiedCorrections(result, make: make, model: model, year: year);
-    return _formatForDisplay(result);
+    return _decodeResearchJson(text);
   }
 
   Map<String, dynamic> _decodeObject(String source) {
     try {
       final decoded = jsonDecode(source);
       if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
     } on FormatException {
       // A clearer error is thrown below.
     }
@@ -162,16 +207,19 @@ class GeminiService {
     try {
       final decoded = jsonDecode(cleaned);
       if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
     } on FormatException {
       // A clearer error is thrown below.
     }
 
     throw const GeminiServiceException(
-      'Gemini did not return valid structured JSON. Please try the research again.',
+      'Gemini did not return valid structured JSON. Please try again.',
     );
   }
 
-  void _applyVerifiedCorrections(
+  void _applyOwnerVerifiedCorrections(
     Map<String, dynamic> result, {
     required String make,
     required String model,
@@ -180,21 +228,32 @@ class GeminiService {
     final makeKey = make.trim().toLowerCase();
     final modelKey = model.trim().toLowerCase();
 
-    // Owner-verified UK vehicle data. Verified data always overrides AI output.
-    if (makeKey == 'dacia' &&
-        modelKey.contains('logan') &&
-        year == 2014) {
+    if (makeKey == 'dacia' && modelKey.contains('logan') && year == 2014) {
       final keys = _asStringMap(result['keys']);
+      keys['key_type'] = 'Mechanical remote key';
+      keys['blade_profile'] = 'HU179 laser track';
       keys['transponder'] = 'ID4A (PCF7961M / Hitag AES)';
-      keys['frequency'] = '433 MHz';
+      keys['frequency'] = '433 MHz FSK';
       keys['notes'] =
-          'Verified UK specification: 2014 Dacia Logan uses ID4A (PCF7961M). '
-          'Do not substitute ID46 without confirming the original key.';
+          'Owner-verified UK vehicle: HU179 blade with ID4A PCF7961M. '
+          'Read the existing key where possible because transition-year catalogue data may conflict.';
       result['keys'] = keys;
 
       final vehicle = _asStringMap(result['vehicle']);
+      vehicle['summary'] =
+          'UK-market 2014 Dacia Logan II. Owner-verified key specification: '
+          'HU179 laser blade, ID4A PCF7961M Hitag AES transponder and 433 MHz FSK remote.';
       vehicle['verification'] = 'Owner verified UK vehicle data';
       result['vehicle'] = vehicle;
+
+      result['verification'] = {
+        'status': 'Verified with owner correction',
+        'method': 'Two-pass Google Search research plus owner-confirmed vehicle data',
+        'conflicts_found': [
+          'Some older or generic catalogues cross-list ID46/VAC102 for transition vehicles.',
+        ],
+        'final_decision': 'Use HU179 and ID4A PCF7961M for this verified UK vehicle.',
+      };
     }
   }
 
@@ -210,7 +269,7 @@ class GeminiService {
     return formatted;
   }
 
-  String _readableValue(Object? value, {int depth = 0}) {
+  String _readableValue(Object? value) {
     if (value == null) return 'Research Required';
     if (value is String) {
       final cleaned = value.trim();
@@ -221,10 +280,8 @@ class GeminiService {
     if (value is List) {
       if (value.isEmpty) return 'Research Required';
       return value.map((item) {
-        if (item is Map) {
-          return _readableValue(item, depth: depth + 1);
-        }
-        return '• ${_readableValue(item, depth: depth + 1)}';
+        if (item is Map) return _readableValue(item);
+        return '• ${_readableValue(item)}';
       }).join('\n');
     }
 
@@ -238,13 +295,13 @@ class GeminiService {
           if (item.isEmpty) continue;
           lines.add('$label:');
           for (final listItem in item) {
-            lines.add('• ${_readableValue(listItem, depth: depth + 1)}');
+            lines.add('• ${_readableValue(listItem)}');
           }
         } else if (item is Map) {
           lines.add('$label:');
-          lines.add(_readableValue(item, depth: depth + 1));
+          lines.add(_readableValue(item));
         } else {
-          final text = _readableValue(item, depth: depth + 1);
+          final text = _readableValue(item);
           if (text != 'Research Required') lines.add('$label: $text');
         }
       }
@@ -269,7 +326,7 @@ class GeminiService {
           : '${word[0].toUpperCase()}${word.substring(1)}')
       .join(' ');
 
-  String _buildPrompt({
+  String _buildResearchPrompt({
     required String make,
     required String model,
     required int year,
@@ -277,53 +334,95 @@ class GeminiService {
     required bool ukOnly,
   }) {
     final marketInstruction = ukOnly
-        ? '''Research the UK-market right-hand-drive vehicle only.
-Do not mix European, US or global specifications into the UK answer.
-Return the single most likely UK specification for the exact year requested.
-Only mention an alternative transponder, key or immobiliser when reliable evidence shows both were genuinely supplied in UK vehicles for that exact model year.
-Do not use vague phrases such as "ID46 or ID4A" merely because a model changed around that period.'''
-        : 'State the applicable market clearly and do not mix incompatible regional specifications.';
+        ? 'Research only the UK-market right-hand-drive vehicle. Do not mix US, European or global specifications into the UK answer.'
+        : 'State the applicable market clearly and never mix incompatible regional specifications.';
 
     return '''
-You are a careful professional vehicle-key research assistant for an auto locksmith.
+You are carrying out pass 1 of a professional auto-locksmith vehicle-key investigation.
+Use Google Search and compare multiple credible sources before answering.
 
 $marketInstruction
 
-Vehicle request:
+Vehicle:
 - Manufacturer: $make
 - Model: $model
 - Year: $year
 - Job type: $jobType
 
-Return one JSON object only. Do not use Markdown and do not add text outside the JSON.
-Never guess. When reliable information is unavailable, write "Research Required".
-Prioritise exact UK model-year data over generic manufacturer coverage.
-Do not claim that a tool, attachment, cable, licence or procedure is supported unless you are reasonably confident.
-Clearly distinguish confirmed support, model-dependent support, unsupported functions and information that requires verification.
-Research multiple professional locksmith tool brands, not only Autel or the user's own tools.
-Keep safety and legality in mind and provide professional locksmith reference information only.
+Prioritise professional trade catalogues and manufacturer/tool documentation, including where available: Hickleys, 3D Group, Advanced Keys, Silca, Keyline, JMA, Ilco, Euro Car Keys, Autel, Advanced Diagnostics, OBDSTAR, Xhorse, Lonsdor and OEM references.
 
-For tool compatibility, consider relevant current and legacy tools from manufacturers including:
-Autel, Xhorse, OBDSTAR, Advanced Diagnostics/Smart Pro, Lonsdor, Abrites, KEYDIY, Auro/Otofix, TDB, Zed-Full, Tango, Orange5, VVDI, CGDI, Yanhua and other credible professional systems where applicable.
-Do not include a tool merely because the brand generally covers the manufacturer.
+Important rules:
+- Treat registration year and production/build date as different things.
+- Detect facelift, platform and transition-year splits.
+- Never force one answer when credible sources show variants.
+- For a split, state each variant, likely date/build range and exactly how to verify it from the original key, VIN/build date, module or chip read.
+- Do not infer tool support from brand coverage alone.
+- Use "Research Required" when evidence is insufficient.
+- Sources must be identifiable names or URLs actually consulted, not invented references.
 
-Use exactly these top-level fields:
+Return one JSON object only with exactly these top-level fields:
+${_schema(make, model, year)}
+''';
+  }
+
+  String _buildVerificationPrompt({
+    required String make,
+    required String model,
+    required int year,
+    required String jobType,
+    required bool ukOnly,
+    required Map<String, dynamic> draft,
+  }) {
+    return '''
+You are pass 2: an independent senior auto-locksmith verifier.
+Use Google Search again. Do not simply agree with the draft.
+
+Exact request:
+- Market: ${ukOnly ? 'UK right-hand-drive only' : 'state market precisely'}
+- Manufacturer: $make
+- Model: $model
+- Year: $year
+- Job type: $jobType
+
+Draft from pass 1:
+${jsonEncode(draft)}
+
+Check every factual field against multiple credible trade or primary sources. Pay special attention to:
+- exact blade profile and aliases
+- transponder family and chip part number
+- remote frequency/modulation
+- transition-year or build-date splits
+- OEM part numbers
+- immobiliser architecture
+- tool model, cable, adapter, online and security-data requirements
+
+When sources disagree:
+- explain the conflict in verification.conflicts_found
+- do not combine incompatible variants
+- state the safest field check needed before preparing a key
+- lower confidence appropriately
+
+Correct every error and return a complete replacement JSON object, not a commentary and not a patch.
+Use exactly this schema:
+${_schema(make, model, year)}
+''';
+  }
+
+  String _schema(String make, String model, int year) => '''
 {
-  "vehicle": {"manufacturer":"$make","model":"$model","year":$year,"market":"UK or Research Required","summary":""},
-  "keys": {"key_type":"","blade_profile":"","transponder":"","frequency":"","oem_part_numbers":[],"aftermarket_options":[],"notes":""},
+  "vehicle": {"manufacturer":"$make","model":"$model","year":$year,"market":"","summary":""},
+  "keys": {"key_type":"","blade_profile":"","transponder":"","frequency":"","variants":[],"oem_part_numbers":[],"aftermarket_options":[],"verification_checks":[],"notes":""},
   "immobiliser": {"system":"","module":"","module_location_rhd":"","security_data_required":[],"notes":""},
   "programming": {"method":"","all_keys_lost":"","spare_key":"","online_required":"","dealer_key_required":"","battery_support":"","estimated_time":"","difficulty":"","backup_requirements":[],"notes":""},
   "tool_compatibility": [{"manufacturer":"","tool_model":"","support_status":"Confirmed, Model Dependent, Unsupported, or Research Required","supported_functions":[],"unsupported_functions":[],"connection_methods":[],"required_attachments":[],"required_cables":[],"optional_accessories":[],"licence_or_subscription":"","minimum_software_version":"","online_required":"","dealer_key_requirement":"","security_data_requirements":[],"gateway_requirements":[],"limitations":[],"notes":""}],
   "job_requirements": {"required_equipment":[],"required_cables_and_adapters":[],"internet_or_account":[],"security_data":[],"module_removal":[],"gateway_or_bypass":[],"power_supply":"","warnings":[]},
   "recommended_methods": [{"priority":1,"tool_and_method":"","reason":"","requirements":[],"limitations":[]}],
+  "verification": {"status":"Verified, Conflicting, or Research Required","method":"Two-pass Google Search cross-check","conflicts_found":[],"checks_required":[],"final_decision":""},
   "sources": [],
-  "more_information": "",
-  "confidence": "Low, Medium, or High"
+  "more_information":"",
+  "confidence":"Low, Medium, or High"
 }
-
-Return several tool entries when credible alternatives exist. If support cannot be verified, use Research Required instead of inventing compatibility.
 ''';
-  }
 
   void dispose() {
     _client.close();
