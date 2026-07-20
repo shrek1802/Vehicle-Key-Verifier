@@ -28,7 +28,7 @@ class SectionTitle extends StatelessWidget {
             Icon(
               icon,
               color: AppColors.primaryLight,
-              size: 22,
+              size: 24,
             ),
             AppSpacing.gapRowSM,
           ],
