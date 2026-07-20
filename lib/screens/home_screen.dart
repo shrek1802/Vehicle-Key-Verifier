@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../controllers/app_controller.dart';
 import '../widgets/app_header.dart';
-import '../screens/database_search_screen.dart';
-import '../screens/research_screen.dart';
-import '../screens/saved_screen.dart';
-import '../screens/settings_screen.dart';
+import 'database_search_screen.dart';
+import 'research_screen.dart';
+import 'saved_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -23,17 +23,16 @@ class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
   late final List<Widget> pages = [
-    DatabaseSearchScreen(controller: widget.controller),
+    DatabaseSearchScreen(
+      controller: widget.controller,
+    ),
     const SavedScreen(),
-    const ResearchScreen(),
-    SettingsScreen(controller: widget.controller),
-  ];
-
-  static const titles = [
-    'Vehicle Search',
-    'Saved Vehicles',
-    'AI Research',
-    'Settings',
+    ResearchScreen(
+      controller: widget.controller,
+    ),
+    SettingsScreen(
+      controller: widget.controller,
+    ),
   ];
 
   @override
@@ -49,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: 'Professional UK Edition',
               ),
             ),
-
             Expanded(
               child: IndexedStack(
                 index: currentIndex,
@@ -62,7 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
-          setState(() => currentIndex = index);
+          setState(() {
+            currentIndex = index;
+          });
         },
         destinations: const [
           NavigationDestination(
