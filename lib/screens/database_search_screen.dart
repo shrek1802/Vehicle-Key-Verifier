@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../controllers/app_controller.dart';
 import '../services/local_vehicle_database.dart';
 import 'research_screen.dart';
+import 'vehicle_screen.dart';
 
 class DatabaseSearchScreen extends StatefulWidget {
   const DatabaseSearchScreen({required this.controller, super.key});
@@ -76,12 +77,17 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
     final input = _yearController.text.trim();
     final year = _year();
     if (input.isNotEmpty && year == null) {
-      setState(() => _error = 'Enter a full year or UK registration age, e.g. 2021 or 71.');
+      setState(() => _error =
+          'Enter a full year or UK registration age, e.g. 2021 or 71.');
       return;
     }
     if (year != null) _yearController.text = year.toString();
     setState(() {
-      _results = _database.find(manufacturer: _make!, model: _model!, year: year);
+      _results = _database.find(
+        manufacturer: _make!,
+        model: _model!,
+        year: year,
+      );
       _searched = true;
       _error = null;
     });
@@ -92,7 +98,9 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(title: const Text('AI Research')),
-          body: SafeArea(child: ResearchScreen(controller: widget.controller)),
+          body: SafeArea(
+            child: ResearchScreen(controller: widget.controller),
+          ),
         ),
       ),
     );
@@ -109,9 +117,14 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('UK Vehicle Search', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'UK Vehicle Search',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 6),
-                const Text('Search the offline database first. Use AI only for rare, imported or unknown vehicles.'),
+                const Text(
+                  'Search the offline database first. Use AI only for rare, imported or unknown vehicles.',
+                ),
                 const SizedBox(height: 20),
                 DropdownMenu<String>(
                   expandedInsets: EdgeInsets.zero,
@@ -119,15 +132,20 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
                   enableFilter: true,
                   enableSearch: true,
                   label: const Text('Manufacturer'),
-                  hintText: _loading ? 'Loading database…' : 'Select manufacturer',
+                  hintText: _loading
+                      ? 'Loading database…'
+                      : 'Select manufacturer',
                   dropdownMenuEntries: _makes
-                      .map((value) => DropdownMenuEntry(value: value, label: value))
+                      .map((value) =>
+                          DropdownMenuEntry(value: value, label: value))
                       .toList(),
                   onSelected: (value) {
                     setState(() {
                       _make = value;
                       _model = null;
-                      _models = value == null ? const [] : _database.modelsFor(value);
+                      _models = value == null
+                          ? const []
+                          : _database.modelsFor(value);
                       _results = const [];
                       _searched = false;
                     });
@@ -141,9 +159,12 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
                   enableFilter: true,
                   enableSearch: true,
                   label: const Text('Model'),
-                  hintText: _make == null ? 'Select manufacturer first' : 'Select model',
+                  hintText: _make == null
+                      ? 'Select manufacturer first'
+                      : 'Select model',
                   dropdownMenuEntries: _models
-                      .map((value) => DropdownMenuEntry(value: value, label: value))
+                      .map((value) =>
+                          DropdownMenuEntry(value: value, label: value))
                       .toList(),
                   onSelected: (value) => setState(() {
                     _model = value;
@@ -180,7 +201,10 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
           const SizedBox(height: 16),
           Card(
             color: Theme.of(context).colorScheme.errorContainer,
-            child: Padding(padding: const EdgeInsets.all(16), child: Text(_error!)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(_error!),
+            ),
           ),
         ],
         if (_searched && _results.isEmpty) ...[
@@ -192,9 +216,14 @@ class _DatabaseSearchScreenState extends State<DatabaseSearchScreen> {
                 children: [
                   const Icon(Icons.manage_search, size: 42),
                   const SizedBox(height: 12),
-                  Text('No verified record found', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'No verified record found',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 6),
-                  const Text('This vehicle is not currently in the offline database.'),
+                  const Text(
+                    'This vehicle is not currently in the offline database.',
+                  ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: _openAi,
@@ -222,28 +251,37 @@ class _VehicleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = '${record['Manufacturer'] ?? ''} ${record['Model'] ?? ''}'.trim();
+    final title =
+        '${record['Manufacturer'] ?? ''} ${record['Model'] ?? ''}'.trim();
+    final generation = record['Generation']?.toString().trim() ?? '';
+    final start = record['Start Year']?.toString().trim() ?? '';
+    final end = record['End Year']?.toString().trim() ?? '';
+    final subtitle = [
+      if (generation.isNotEmpty) generation,
+      if (start.isNotEmpty || end.isNotEmpty) '$start–$end',
+    ].join(' • ');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        initiallyExpanded: true,
-        leading: const Icon(Icons.verified_outlined),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text('${record['Generation'] ?? ''} • ${record['Start Year'] ?? ''}–${record['End Year'] ?? ''}'),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: record.entries
-            .where((entry) => entry.value != null && entry.value.toString().trim().isNotEmpty)
-            .map((entry) => Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text.rich(TextSpan(children: [
-                      TextSpan(text: '${entry.key}: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      TextSpan(text: entry.value.toString()),
-                    ])),
-                  ),
-                ))
-            .toList(),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading: const CircleAvatar(
+          child: Icon(Icons.verified_outlined),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: subtitle.isEmpty ? null : Text(subtitle),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => VehicleScreen(record: record),
+            ),
+          );
+        },
       ),
     );
   }
