@@ -36,6 +36,65 @@ jobs:
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
           fi
 
+      - name: Restore permanent signing key
+        id: signing-cache
+        uses: actions/cache@v4
+        with:
+          path: .github-signing/vehicle-key-verifier.jks
+          key: vehicle-key-verifier-signing-v1
+
+      - name: Create signing key on first build
+        if: steps.signing-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p .github-signing
+          keytool -genkeypair \
+            -keystore .github-signing/vehicle-key-verifier.jks \
+            -storepass VehicleKeyVerifier2026 \
+            -keypass VehicleKeyVerifier2026 \
+            -alias vehicle_key_verifier \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Pro Locks UK, OU=Vehicle Key Verifier, O=Pro Locks UK, L=Nottingham, ST=Nottinghamshire, C=GB"
+
+      - name: Configure release signing
+        shell: bash
+        run: |
+          cat > android/key.properties <<'EOF'
+          storePassword=VehicleKeyVerifier2026
+          keyPassword=VehicleKeyVerifier2026
+          keyAlias=vehicle_key_verifier
+          storeFile=../../.github-signing/vehicle-key-verifier.jks
+          EOF
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('android/app/build.gradle.kts')
+          text = path.read_text()
+
+          if 'java.util.Properties' not in text:
+              text = 'import java.util.Properties\nimport java.io.FileInputStream\n\n' + text
+
+          marker = 'android {'
+          setup = '''val keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n\n'''
+          if 'val keystoreProperties = Properties()' not in text:
+              text = text.replace(marker, setup + marker, 1)
+
+          signing_marker = '    buildTypes {'
+          signing_block = '''    signingConfigs {\n        create("release") {\n            keyAlias = keystoreProperties["keyAlias"] as String\n            keyPassword = keystoreProperties["keyPassword"] as String\n            storeFile = keystoreProperties["storeFile"]?.let { file(it) }\n            storePassword = keystoreProperties["storePassword"] as String\n        }\n    }\n\n'''
+          if 'create("release")' not in text:
+              text = text.replace(signing_marker, signing_block + signing_marker, 1)
+
+          text = text.replace(
+              'signingConfig = signingConfigs.getByName("debug")',
+              'signingConfig = signingConfigs.getByName("release")',
+          )
+
+          path.write_text(text)
+          PY
+
       - name: Clean generated template files
         run: |
           rm -f test/widget_test.dart
