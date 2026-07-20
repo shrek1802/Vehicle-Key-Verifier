@@ -10,10 +10,7 @@ import '../widgets/info_tile.dart';
 import '../widgets/status_chip.dart';
 
 class VehicleScreen extends StatefulWidget {
-  const VehicleScreen({
-    required this.record,
-    super.key,
-  });
+  const VehicleScreen({required this.record, super.key});
 
   final Map<String, dynamic> record;
 
@@ -47,9 +44,9 @@ class _VehicleScreenState extends State<VehicleScreen>
 
   String _value(List<String> keys, {String fallback = 'Not recorded'}) {
     for (final key in keys) {
-      final value = widget.record[key];
-      if (value != null && value.toString().trim().isNotEmpty) {
-        return value.toString().trim();
+      final raw = widget.record[key];
+      if (raw != null && raw.toString().trim().isNotEmpty) {
+        return raw.toString().trim();
       }
     }
     return fallback;
@@ -95,6 +92,7 @@ class _VehicleScreenState extends State<VehicleScreen>
                 ),
               ),
             ),
+            _WorkshopSummary(value: _value),
             Container(
               margin: const EdgeInsets.fromLTRB(
                 AppSpacing.lg,
@@ -142,12 +140,69 @@ class _VehicleScreenState extends State<VehicleScreen>
   }
 }
 
+class _WorkshopSummary extends StatelessWidget {
+  const _WorkshopSummary({required this.value});
+
+  final String Function(List<String>, {String fallback}) value;
+
+  @override
+  Widget build(BuildContext context) {
+    final addKey = value(const ['Add Key', 'Add Key Method', 'Programming Method']);
+    final akl = value(const ['All Keys Lost', 'AKL', 'AKL Method']);
+    final sgw = value(const ['SGW', 'Security Gateway', 'Gateway']);
+    final online = value(const ['Online', 'Online Required', 'Server']);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Row(
+        children: [
+          _CapabilityChip(label: 'Add key', value: addKey, icon: Icons.add_key_rounded),
+          AppSpacing.gapRowSM,
+          _CapabilityChip(label: 'AKL', value: akl, icon: Icons.key_off_outlined),
+          AppSpacing.gapRowSM,
+          _CapabilityChip(label: 'SGW', value: sgw, icon: Icons.shield_outlined),
+          AppSpacing.gapRowSM,
+          _CapabilityChip(label: 'Online', value: online, icon: Icons.cloud_outlined),
+        ],
+      ),
+    );
+  }
+}
+
+class _CapabilityChip extends StatelessWidget {
+  const _CapabilityChip({required this.label, required this.value, required this.icon});
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = _stateFor(value);
+    return Tooltip(
+      message: '$label: $value',
+      child: StatusChip(label: label.toUpperCase(), status: state, icon: icon),
+    );
+  }
+}
+
+AppStatus _stateFor(String value) {
+  final text = value.trim().toLowerCase();
+  if (text.isEmpty || text == 'not recorded' || text == 'unknown' || text == 'n/a') {
+    return AppStatus.unknown;
+  }
+  if (text.contains('not supported') || text == 'no' || text.contains('unavailable')) {
+    return AppStatus.unsupported;
+  }
+  if (text.contains('warning') || text.contains('bench') || text.contains('remove')) {
+    return AppStatus.warning;
+  }
+  return AppStatus.supported;
+}
+
 class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({
-    required this.record,
-    required this.value,
-    required this.years,
-  });
+  const _OverviewTab({required this.record, required this.value, required this.years});
 
   final Map<String, dynamic> record;
   final String Function(List<String>, {String fallback}) value;
@@ -155,35 +210,35 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabList(
-      children: [
-        AppCard(
-          title: 'Verified vehicle record',
-          subtitle: 'Offline UK database information',
-          leading: const Icon(Icons.verified_rounded, color: AppColors.verifiedLight),
-          trailing: const StatusChip.verified(),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('Manufacturer', value(const ['Manufacturer', 'Make']), Icons.factory_outlined),
-            _Info('Model', value(const ['Model']), Icons.directions_car_outlined),
-            _Info('Generation / platform', value(const ['Generation', 'Platform']), Icons.account_tree_outlined),
-            _Info('Production years', years, Icons.calendar_month_outlined),
-          ]),
-        ),
-        AppCard(
-          title: 'Key specification',
-          leading: const Icon(Icons.key_rounded, color: AppColors.primaryLight),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('Key type', value(const ['Key Type', 'KeyType', 'Key']), Icons.key_outlined),
-            _Info('Blade / profile', value(const ['Blade', 'Blade Profile', 'Key Blade']), Icons.content_cut_rounded),
-            _Info('Transponder', value(const ['Transponder', 'Chip', 'Chip Type']), Icons.memory_rounded),
-            _Info('Remote frequency', value(const ['Frequency', 'Remote Frequency']), Icons.settings_remote_outlined),
-          ]),
-        ),
-        _ExtraFieldsCard(record: record),
-      ],
-    );
+    return _TabList(children: [
+      AppCard(
+        title: 'Verified vehicle record',
+        subtitle: 'Offline UK database information',
+        leading: const Icon(Icons.verified_rounded, color: AppColors.verifiedLight),
+        trailing: const StatusChip.verified(),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('Manufacturer', value(const ['Manufacturer', 'Make']), Icons.factory_outlined),
+          _Info('Model', value(const ['Model']), Icons.directions_car_outlined),
+          _Info('Generation / platform', value(const ['Generation', 'Platform']), Icons.account_tree_outlined),
+          _Info('Production years', years, Icons.calendar_month_outlined),
+          _Info('UK market', value(const ['Market', 'Region'], fallback: 'United Kingdom / RHD'), Icons.flag_outlined),
+        ]),
+      ),
+      AppCard(
+        title: 'Key specification',
+        leading: const Icon(Icons.key_rounded, color: AppColors.primaryLight),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('Key type', value(const ['Key Type', 'KeyType', 'Key']), Icons.key_outlined),
+          _Info('Blade / profile', value(const ['Blade', 'Blade Profile', 'Key Blade']), Icons.content_cut_rounded),
+          _Info('Transponder', value(const ['Transponder', 'Chip', 'Chip Type']), Icons.memory_rounded),
+          _Info('Remote frequency', value(const ['Frequency', 'Remote Frequency']), Icons.settings_remote_outlined),
+          _Info('Keyless / proximity', value(const ['Keyless', 'Proximity', 'Smart Key']), Icons.sensors_outlined),
+        ]),
+      ),
+      _ExtraFieldsCard(record: record),
+    ]);
   }
 }
 
@@ -195,45 +250,43 @@ class _ProgrammingTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final warning = value(const ['Programming Warning', 'Warning', 'Important'], fallback: '');
-    return _TabList(
-      children: [
+    return _TabList(children: [
+      AppCard(
+        title: 'Immobiliser and programming',
+        leading: const Icon(Icons.security_rounded, color: AppColors.primaryLight),
+        trailing: const StatusChip.information(),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('Immobiliser system', value(const ['Immobiliser', 'Immobiliser System', 'Immo System']), Icons.shield_outlined),
+          _Info('Add key method', value(const ['Add Key', 'Add Key Method', 'Programming Method']), Icons.add_circle_outline_rounded),
+          _Info('All keys lost method', value(const ['All Keys Lost', 'AKL', 'AKL Method']), Icons.key_off_outlined),
+          _Info('OBD programming', value(const ['OBD', 'OBD Programming', 'Via OBD']), Icons.cable_rounded),
+          _Info('PIN / security data', value(const ['PIN', 'Security Code', 'PIN Required']), Icons.pin_outlined),
+          _Info('Module work', value(const ['Module Work', 'EEPROM', 'Bench Method']), Icons.memory_outlined),
+        ]),
+      ),
+      AppCard(
+        title: 'Security requirements',
+        leading: const Icon(Icons.admin_panel_settings_outlined, color: AppColors.primaryLight),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('Bypass cable / adaptor', value(const ['Bypass Cable', 'Cable', 'Adapter']), Icons.electrical_services_outlined),
+          _Info('Security gateway', value(const ['SGW', 'Security Gateway', 'Gateway']), Icons.lock_outline_rounded),
+          _Info('Online / server required', value(const ['Online', 'Online Required', 'Server']), Icons.cloud_outlined),
+          _Info('Working keys required', value(const ['Working Keys', 'Keys Required', 'Existing Key']), Icons.vpn_key_outlined),
+        ]),
+      ),
+      if (warning.isNotEmpty)
         AppCard(
-          title: 'Immobiliser and programming',
-          leading: const Icon(Icons.security_rounded, color: AppColors.primaryLight),
-          trailing: const StatusChip.information(),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('Immobiliser system', value(const ['Immobiliser', 'Immobiliser System', 'Immo System']), Icons.shield_outlined),
-            _Info('Add key method', value(const ['Add Key', 'Add Key Method', 'Programming Method']), Icons.add_circle_outline_rounded),
-            _Info('All keys lost method', value(const ['All Keys Lost', 'AKL', 'AKL Method']), Icons.key_off_outlined),
-            _Info('OBD programming', value(const ['OBD', 'OBD Programming', 'Via OBD']), Icons.cable_rounded),
+          backgroundColor: AppColors.warningBackground,
+          borderColor: AppColors.warning,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+            AppSpacing.gapRowMD,
+            Expanded(child: Text(warning, style: AppText.warning)),
           ]),
         ),
-        AppCard(
-          title: 'Security requirements',
-          leading: const Icon(Icons.admin_panel_settings_outlined, color: AppColors.primaryLight),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('Bypass cable / adaptor', value(const ['Bypass Cable', 'Cable', 'Adapter']), Icons.electrical_services_outlined),
-            _Info('Security gateway', value(const ['SGW', 'Security Gateway', 'Gateway']), Icons.lock_outline_rounded),
-            _Info('Online / server required', value(const ['Online', 'Online Required', 'Server']), Icons.cloud_outlined),
-          ]),
-        ),
-        if (warning.isNotEmpty)
-          AppCard(
-            backgroundColor: AppColors.warningBackground,
-            borderColor: AppColors.warning,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                AppSpacing.gapRowMD,
-                Expanded(child: Text(warning, style: AppText.warning)),
-              ],
-            ),
-          ),
-      ],
-    );
+    ]);
   }
 }
 
@@ -244,23 +297,35 @@ class _LocationsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TabList(
-      children: [
-        AppCard(
-          title: 'UK / RHD locations',
-          subtitle: 'Locations should be checked against the vehicle before work begins',
-          leading: const Icon(Icons.place_outlined, color: AppColors.primaryLight),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('OBD port', value(const ['OBD Location', 'OBD Port Location']), Icons.settings_input_component_outlined),
-            _Info('Immobiliser / BCM', value(const ['Immobiliser Location', 'BCM Location', 'Immo Location']), Icons.memory_outlined),
-            _Info('Security gateway', value(const ['SGW Location', 'Gateway Location']), Icons.shield_outlined),
-            _Info('ELV / ESL', value(const ['ELV Location', 'ESL Location', 'Steering Lock']), Icons.directions_car_filled_outlined),
-            _Info('Emergency start point', value(const ['Emergency Start', 'Backup Start Location', 'Key Recognition Point']), Icons.sensors_outlined),
-          ]),
-        ),
-      ],
-    );
+    return _TabList(children: [
+      AppCard(
+        backgroundColor: AppColors.infoBackground,
+        borderColor: AppColors.info,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.flag_outlined, color: AppColors.info),
+          AppSpacing.gapRowMD,
+          Expanded(
+            child: Text(
+              'Locations are for UK right-hand-drive vehicles. Confirm trim and model-year differences before dismantling.',
+              style: AppText.bodySecondary,
+            ),
+          ),
+        ]),
+      ),
+      AppCard(
+        title: 'UK / RHD locations',
+        leading: const Icon(Icons.place_outlined, color: AppColors.primaryLight),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('OBD port', value(const ['OBD Location', 'OBD Port Location']), Icons.settings_input_component_outlined),
+          _Info('Immobiliser / BCM', value(const ['Immobiliser Location', 'BCM Location', 'Immo Location']), Icons.memory_outlined),
+          _Info('Security gateway', value(const ['SGW Location', 'Gateway Location']), Icons.shield_outlined),
+          _Info('ELV / ESL', value(const ['ELV Location', 'ESL Location', 'Steering Lock']), Icons.directions_car_filled_outlined),
+          _Info('KESSY / keyless module', value(const ['KESSY Location', 'Keyless Module Location']), Icons.sensors_outlined),
+          _Info('Emergency start point', value(const ['Emergency Start', 'Backup Start Location', 'Key Recognition Point']), Icons.emergency_outlined),
+        ]),
+      ),
+    ]);
   }
 }
 
@@ -269,23 +334,49 @@ class _ToolsTab extends StatelessWidget {
 
   final String Function(List<String>, {String fallback}) value;
 
+  List<String> _splitTools(String raw) {
+    if (raw == 'Not recorded') return const [];
+    return raw
+        .split(RegExp(r'[,;|\n]+'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return _TabList(
-      children: [
-        AppCard(
-          title: 'Supported equipment',
-          leading: const Icon(Icons.build_outlined, color: AppColors.primaryLight),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('Programming tools', value(const ['Tools', 'Supported Tools', 'Programmers']), Icons.precision_manufacturing_outlined),
-            _Info('Lishi / picking tool', value(const ['Lishi', 'Lishi Tool', 'Pick']), Icons.lock_open_outlined),
-            _Info('Key cutting', value(const ['Cutter', 'Cutting Machine', 'Key Cutting']), Icons.content_cut_rounded),
-            _Info('Battery support', value(const ['Battery Support', 'Power Supply', 'Voltage Support']), Icons.battery_charging_full_rounded),
-          ]),
-        ),
-      ],
-    );
+    final rawTools = value(const ['Tools', 'Supported Tools', 'Programmers']);
+    final tools = _splitTools(rawTools);
+
+    return _TabList(children: [
+      AppCard(
+        title: 'Programming tool support',
+        subtitle: tools.isEmpty ? 'No verified tool list recorded yet' : 'Recorded compatible equipment',
+        leading: const Icon(Icons.precision_manufacturing_outlined, color: AppColors.primaryLight),
+        showDivider: true,
+        child: tools.isEmpty
+            ? const StatusChip.unknown(label: 'TOOL SUPPORT UNKNOWN')
+            : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final tool in tools)
+                    StatusChip.supported(label: tool.toUpperCase()),
+                ],
+              ),
+      ),
+      AppCard(
+        title: 'Workshop equipment',
+        leading: const Icon(Icons.build_outlined, color: AppColors.primaryLight),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('Lishi / picking tool', value(const ['Lishi', 'Lishi Tool', 'Pick']), Icons.lock_open_outlined),
+          _Info('Key cutting', value(const ['Cutter', 'Cutting Machine', 'Key Cutting']), Icons.content_cut_rounded),
+          _Info('Battery support', value(const ['Battery Support', 'Power Supply', 'Voltage Support']), Icons.battery_charging_full_rounded),
+          _Info('Required cable / adaptor', value(const ['Bypass Cable', 'Cable', 'Adapter']), Icons.cable_rounded),
+        ]),
+      ),
+    ]);
   }
 }
 
@@ -297,55 +388,52 @@ class _NotesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final source = value(const ['Source', 'Sources']);
-    return _TabList(
-      children: [
-        AppCard(
-          title: 'Technician notes',
-          leading: const Icon(Icons.notes_rounded, color: AppColors.primaryLight),
-          showDivider: true,
-          child: _InfoGroup(items: [
-            _Info('Notes', value(const ['Notes']), Icons.description_outlined),
-            _Info('Tips', value(const ['Tips']), Icons.lightbulb_outline_rounded),
-            _Info('Important', value(const ['Important', 'Warning']), Icons.warning_amber_rounded),
-          ]),
-        ),
-        AppCard(
-          title: 'Record information',
-          leading: const Icon(Icons.fact_check_outlined, color: AppColors.verifiedLight),
-          showDivider: true,
-          child: Column(
-            children: [
-              InfoTile(
-                label: 'Source',
-                value: source,
-                icon: Icons.source_outlined,
-                copyable: source != 'Not recorded',
-                onTap: source == 'Not recorded'
-                    ? null
-                    : () {
-                        Clipboard.setData(ClipboardData(text: source));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Source copied')),
-                        );
-                      },
-              ),
-              const Divider(color: AppColors.divider),
-              InfoTile(
-                label: 'Last verified',
-                value: value(const ['Last Verified', 'Verified Date', 'Updated']),
-                icon: Icons.event_available_outlined,
-              ),
-              const Divider(color: AppColors.divider),
-              InfoTile(
-                label: 'Record status',
-                value: value(const ['Status'], fallback: 'Verified database record'),
-                icon: Icons.verified_user_outlined,
-              ),
-            ],
+    return _TabList(children: [
+      AppCard(
+        title: 'Technician notes',
+        leading: const Icon(Icons.notes_rounded, color: AppColors.primaryLight),
+        showDivider: true,
+        child: _InfoGroup(items: [
+          _Info('Notes', value(const ['Notes']), Icons.description_outlined),
+          _Info('Tips', value(const ['Tips']), Icons.lightbulb_outline_rounded),
+          _Info('Important', value(const ['Important', 'Warning']), Icons.warning_amber_rounded),
+          _Info('Common faults', value(const ['Common Faults', 'Known Issues']), Icons.report_problem_outlined),
+        ]),
+      ),
+      AppCard(
+        title: 'Record information',
+        leading: const Icon(Icons.fact_check_outlined, color: AppColors.verifiedLight),
+        showDivider: true,
+        child: Column(children: [
+          InfoTile(
+            label: 'Source',
+            value: source,
+            icon: Icons.source_outlined,
+            copyable: source != 'Not recorded',
+            onTap: source == 'Not recorded'
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: source));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Source copied')),
+                    );
+                  },
           ),
-        ),
-      ],
-    );
+          const Divider(color: AppColors.divider),
+          InfoTile(
+            label: 'Last verified',
+            value: value(const ['Last Verified', 'Verified Date', 'Updated']),
+            icon: Icons.event_available_outlined,
+          ),
+          const Divider(color: AppColors.divider),
+          InfoTile(
+            label: 'Record status',
+            value: value(const ['Status'], fallback: 'Verified database record'),
+            icon: Icons.verified_user_outlined,
+          ),
+        ]),
+      ),
+    ]);
   }
 }
 
@@ -358,19 +446,23 @@ class _ExtraFieldsCard extends StatelessWidget {
     'Manufacturer', 'Make', 'Model', 'Generation', 'Platform', 'Start Year',
     'StartYear', 'End Year', 'EndYear', 'Key Type', 'KeyType', 'Key', 'Blade',
     'Blade Profile', 'Key Blade', 'Transponder', 'Chip', 'Chip Type',
-    'Frequency', 'Remote Frequency', 'Immobiliser', 'Immobiliser System',
-    'Immo System', 'Add Key', 'Add Key Method', 'Programming Method',
-    'All Keys Lost', 'AKL', 'AKL Method', 'OBD', 'OBD Programming', 'Via OBD',
-    'Bypass Cable', 'Cable', 'Adapter', 'SGW', 'Security Gateway', 'Gateway',
-    'Online', 'Online Required', 'Server', 'Programming Warning', 'Warning',
-    'Important', 'OBD Location', 'OBD Port Location', 'Immobiliser Location',
-    'BCM Location', 'Immo Location', 'SGW Location', 'Gateway Location',
-    'ELV Location', 'ESL Location', 'Steering Lock', 'Emergency Start',
-    'Backup Start Location', 'Key Recognition Point', 'Tools', 'Supported Tools',
-    'Programmers', 'Lishi', 'Lishi Tool', 'Pick', 'Cutter', 'Cutting Machine',
-    'Key Cutting', 'Battery Support', 'Power Supply', 'Voltage Support', 'Notes',
-    'Tips', 'Source', 'Sources', 'Last Verified', 'Verified Date', 'Updated',
-    'Status',
+    'Frequency', 'Remote Frequency', 'Keyless', 'Proximity', 'Smart Key',
+    'Immobiliser', 'Immobiliser System', 'Immo System', 'Add Key',
+    'Add Key Method', 'Programming Method', 'All Keys Lost', 'AKL',
+    'AKL Method', 'OBD', 'OBD Programming', 'Via OBD', 'PIN',
+    'Security Code', 'PIN Required', 'Module Work', 'EEPROM', 'Bench Method',
+    'Working Keys', 'Keys Required', 'Existing Key', 'Bypass Cable', 'Cable',
+    'Adapter', 'SGW', 'Security Gateway', 'Gateway', 'Online',
+    'Online Required', 'Server', 'Programming Warning', 'Warning', 'Important',
+    'OBD Location', 'OBD Port Location', 'Immobiliser Location', 'BCM Location',
+    'Immo Location', 'SGW Location', 'Gateway Location', 'ELV Location',
+    'ESL Location', 'Steering Lock', 'KESSY Location',
+    'Keyless Module Location', 'Emergency Start', 'Backup Start Location',
+    'Key Recognition Point', 'Tools', 'Supported Tools', 'Programmers', 'Lishi',
+    'Lishi Tool', 'Pick', 'Cutter', 'Cutting Machine', 'Key Cutting',
+    'Battery Support', 'Power Supply', 'Voltage Support', 'Notes', 'Tips',
+    'Common Faults', 'Known Issues', 'Source', 'Sources', 'Last Verified',
+    'Verified Date', 'Updated', 'Status', 'Market', 'Region',
   };
 
   @override
@@ -388,12 +480,10 @@ class _ExtraFieldsCard extends StatelessWidget {
       title: 'Additional database fields',
       leading: const Icon(Icons.list_alt_rounded, color: AppColors.primaryLight),
       showDivider: true,
-      child: _InfoGroup(
-        items: [
-          for (final entry in extras)
-            _Info(entry.key, entry.value.toString(), Icons.chevron_right_rounded),
-        ],
-      ),
+      child: _InfoGroup(items: [
+        for (final entry in extras)
+          _Info(entry.key, entry.value.toString(), Icons.chevron_right_rounded),
+      ]),
     );
   }
 }
@@ -405,19 +495,12 @@ class _InfoGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var index = 0; index < items.length; index++) ...[
-          InfoTile(
-            label: items[index].label,
-            value: items[index].value,
-            icon: items[index].icon,
-          ),
-          if (index < items.length - 1)
-            const Divider(color: AppColors.divider),
-        ],
+    return Column(children: [
+      for (var index = 0; index < items.length; index++) ...[
+        InfoTile(label: items[index].label, value: items[index].value, icon: items[index].icon),
+        if (index < items.length - 1) const Divider(color: AppColors.divider),
       ],
-    );
+    ]);
   }
 }
 
@@ -437,12 +520,7 @@ class _TabList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        0,
-        AppSpacing.lg,
-        AppSpacing.xxl,
-      ),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xxl),
       itemCount: children.length,
       separatorBuilder: (_, __) => AppSpacing.gapLG,
       itemBuilder: (_, index) => children[index],
