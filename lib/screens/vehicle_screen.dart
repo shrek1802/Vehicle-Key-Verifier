@@ -11,7 +11,6 @@ import '../widgets/status_chip.dart';
 
 class VehicleScreen extends StatefulWidget {
   const VehicleScreen({required this.record, super.key});
-
   final Map<String, dynamic> record;
 
   @override
@@ -142,7 +141,6 @@ class _VehicleScreenState extends State<VehicleScreen>
 
 class _WorkshopSummary extends StatelessWidget {
   const _WorkshopSummary({required this.value});
-
   final String Function(List<String>, {String fallback}) value;
 
   @override
@@ -157,7 +155,7 @@ class _WorkshopSummary extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: Row(
         children: [
-          _CapabilityChip(label: 'Add key', value: addKey, icon: Icons.add_key_rounded),
+          _CapabilityChip(label: 'Add key', value: addKey, icon: Icons.key_rounded),
           AppSpacing.gapRowSM,
           _CapabilityChip(label: 'AKL', value: akl, icon: Icons.key_off_outlined),
           AppSpacing.gapRowSM,
@@ -172,17 +170,19 @@ class _WorkshopSummary extends StatelessWidget {
 
 class _CapabilityChip extends StatelessWidget {
   const _CapabilityChip({required this.label, required this.value, required this.icon});
-
   final String label;
   final String value;
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    final state = _stateFor(value);
     return Tooltip(
       message: '$label: $value',
-      child: StatusChip(label: label.toUpperCase(), status: state, icon: icon),
+      child: StatusChip(
+        label: label.toUpperCase(),
+        status: _stateFor(value),
+        icon: icon,
+      ),
     );
   }
 }
@@ -203,7 +203,6 @@ AppStatus _stateFor(String value) {
 
 class _OverviewTab extends StatelessWidget {
   const _OverviewTab({required this.record, required this.value, required this.years});
-
   final Map<String, dynamic> record;
   final String Function(List<String>, {String fallback}) value;
   final String years;
@@ -244,7 +243,6 @@ class _OverviewTab extends StatelessWidget {
 
 class _ProgrammingTab extends StatelessWidget {
   const _ProgrammingTab({required this.value});
-
   final String Function(List<String>, {String fallback}) value;
 
   @override
@@ -292,7 +290,6 @@ class _ProgrammingTab extends StatelessWidget {
 
 class _LocationsTab extends StatelessWidget {
   const _LocationsTab({required this.value});
-
   final String Function(List<String>, {String fallback}) value;
 
   @override
@@ -331,7 +328,6 @@ class _LocationsTab extends StatelessWidget {
 
 class _ToolsTab extends StatelessWidget {
   const _ToolsTab({required this.value});
-
   final String Function(List<String>, {String fallback}) value;
 
   List<String> _splitTools(String raw) {
@@ -382,7 +378,6 @@ class _ToolsTab extends StatelessWidget {
 
 class _NotesTab extends StatelessWidget {
   const _NotesTab({required this.value});
-
   final String Function(List<String>, {String fallback}) value;
 
   @override
@@ -439,7 +434,6 @@ class _NotesTab extends StatelessWidget {
 
 class _ExtraFieldsCard extends StatelessWidget {
   const _ExtraFieldsCard({required this.record});
-
   final Map<String, dynamic> record;
 
   static const known = <String>{
@@ -473,7 +467,6 @@ class _ExtraFieldsCard extends StatelessWidget {
             entry.value != null &&
             entry.value.toString().trim().isNotEmpty)
         .toList();
-
     if (extras.isEmpty) return const SizedBox.shrink();
 
     return AppCard(
@@ -490,7 +483,6 @@ class _ExtraFieldsCard extends StatelessWidget {
 
 class _InfoGroup extends StatelessWidget {
   const _InfoGroup({required this.items});
-
   final List<_Info> items;
 
   @override
@@ -506,7 +498,6 @@ class _InfoGroup extends StatelessWidget {
 
 class _Info {
   const _Info(this.label, this.value, this.icon);
-
   final String label;
   final String value;
   final IconData icon;
@@ -514,7 +505,6 @@ class _Info {
 
 class _TabList extends StatelessWidget {
   const _TabList({required this.children});
-
   final List<Widget> children;
 
   @override
