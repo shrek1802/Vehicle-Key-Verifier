@@ -27,57 +27,58 @@ class _VehicleScreenState extends State<VehicleScreen>
     super.dispose();
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text("Vehicle Information"),
-      bottom: TabBar(
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Vehicle Information'),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.info_outline),
+              text: 'Overview',
+            ),
+            Tab(
+              icon: Icon(Icons.key),
+              text: 'Programming',
+            ),
+            Tab(
+              icon: Icon(Icons.place),
+              text: 'Locations',
+            ),
+            Tab(
+              icon: Icon(Icons.build),
+              text: 'Tools',
+            ),
+            Tab(
+              icon: Icon(Icons.notes),
+              text: 'Notes',
+            ),
+          ],
+        ),
+      ),
+      body: TabBarView(
         controller: _tabController,
-        isScrollable: true,
-        tabs: const [
-          Tab(
-            icon: Icon(Icons.info_outline),
-            text: "Overview",
+        children: const [
+          Center(
+            child: Text('Overview'),
           ),
-          Tab(
-            icon: Icon(Icons.key),
-            text: "Programming",
+          Center(
+            child: Text('Programming'),
           ),
-          Tab(
-            icon: Icon(Icons.place),
-            text: "Locations",
+          Center(
+            child: Text('Locations'),
           ),
-          Tab(
-            icon: Icon(Icons.build),
-            text: "Tools",
+          Center(
+            child: Text('Tools'),
           ),
-          Tab(
-            icon: Icon(Icons.notes),
-            text: "Notes",
+          Center(
+            child: Text('Notes'),
           ),
         ],
       ),
-    ),
-    body: TabBarView(
-      controller: _tabController,
-      children: const [
-        Center(
-          child: Text("Overview"),
-        ),
-        Center(
-          child: Text("Programming"),
-        ),
-        Center(
-          child: Text("Locations"),
-        ),
-        Center(
-          child: Text("Tools"),
-        ),
-        Center(
-          child: Text("Notes"),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
